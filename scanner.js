@@ -21,13 +21,13 @@
         canvasOutput.width = CANVAS_SIZE;
         canvasOutput.height = CANVAS_SIZE;
 
-        // Create pristine offscreen buffer for scan accummulation (Eliminates noise post-destruction)
+        // Create pristine offscreen buffer for scan accumulation
         const canvasOutputPristine = document.createElement('canvas');
         canvasOutputPristine.width = CANVAS_SIZE;
         canvasOutputPristine.height = CANVAS_SIZE;
         const ctxOPristine = canvasOutputPristine.getContext('2d');
 
-        // High-Performance Film Noise Texture Generator (Procedural offscreen tiled canvas)
+        // High-Performance Film Noise Texture Generator
         const noiseCanvas = document.createElement('canvas');
         noiseCanvas.width = 128;
         noiseCanvas.height = 128;
@@ -42,11 +42,88 @@
         }
         noiseCtx.putImageData(noiseImgData, 0, 0);
 
+        // Internationalization Map
+        const i18n = {
+            en: {
+                title: "SCANNER DISTORTION LAB",
+                subtitle: "Slit-Scan Glitch Art • Scanner Displacement Generator",
+                workspaceA: "A. WORKSPACE",
+                workspaceASub: "Drag to move • Scroll to zoom",
+                controlTip: "Drag to move • Scroll to zoom",
+                pressR: "Press R to reset",
+                rotate90: "Rotate 90°",
+                workspaceB: "B. SCANNING RESULT",
+                workspaceBSub: "Pristine High-Res Output",
+                clearFilm: "Clear Film",
+                exportArt: "Export Artwork",
+                uploadTitle: "1. SOURCE IMAGE",
+                uploadBtn: "Upload Image or Paste",
+                paramTitle: "2. PARAMETERS & DIRECTION",
+                speedLabel: "Scan Speed",
+                speedUnit: "px/frame",
+                dirLabel: "Scan Direction",
+                dirY: "Vertical (Y)",
+                dirX: "Horizontal (X)",
+                effectsTitle: "3. COLOR, NOISE & WOBBLE",
+                colorBtn: "Color",
+                monoBtn: "Mono",
+                bgColorLabel: "Background Color",
+                noiseLabel: "Noise Grain",
+                wobbleLabel: "Sine Wobble Displacement",
+                showInfoLabel: "Show Parameter Info",
+                controlTitle: "4. Start Scan",
+                startScan: "Start Scan",
+                pauseScan: "Pause Scan",
+                continueScan: "Continue Scan",
+                resetScan: "Reset Scan",
+                toastNoImg: "Please upload or paste an image first!",
+                emptyPlaceholderTitle: "Waiting for source image...",
+                emptyPlaceholderSub: "Click above to upload, drag here, or press Ctrl+V to paste"
+            },
+            zh: {
+                title: "扫描仪位移故障艺术生成器",
+                subtitle: "Slit-Scan Glitch Art • 扫描位移故障艺术生成器",
+                workspaceA: "A. 互动操控台 (WORKSPACE)",
+                workspaceASub: "拖拽移动图像 • 滚轮缩放",
+                controlTip: "拖拽移动 • 滚轮缩放",
+                pressR: "R 键重置",
+                rotate90: "旋转 90°",
+                workspaceB: "B. 扫描结果 (SCANNING RESULT)",
+                workspaceBSub: "超清无杂质输出",
+                clearFilm: "擦除底片",
+                exportArt: "导出作品",
+                uploadTitle: "1. 输入源图像",
+                uploadBtn: "上传图片或剪贴板粘贴",
+                paramTitle: "2. 扫描参数与方向",
+                speedLabel: "扫描速度",
+                speedUnit: "像素/帧",
+                dirLabel: "扫描方向",
+                dirY: "纵向 (Y)",
+                dirX: "横向 (X)",
+                effectsTitle: "3. 色彩、噪点与抖动",
+                colorBtn: "彩色",
+                monoBtn: "黑白",
+                bgColorLabel: "底片背景色",
+                noiseLabel: "噪点颗粒度",
+                wobbleLabel: "正弦自动波形抖动",
+                showInfoLabel: "显示参数信息 (Info)",
+                controlTitle: "4. 扫描执行",
+                startScan: "开始扫描",
+                pauseScan: "暂停扫描",
+                continueScan: "继续扫描",
+                resetScan: "重置扫描",
+                toastNoImg: "请先在 A 操控台上传或粘贴一张图片后再进行扫描！",
+                emptyPlaceholderTitle: "等待载入艺术源文件...",
+                emptyPlaceholderSub: "点击上方上传、拖拽至此、或者按 Ctrl+V 直接粘贴图片"
+            }
+        };
+
+        let currentLang = 'en';
+
         // Interactive States - Empty by default
         let imgState = {
             loaded: false,
             imgObj: null,
-            grayscaleCanvas: null, // Offscreen canvas pre-rendered for instant grayscale (Performance Booster)
             x: CANVAS_SIZE / 2,
             y: CANVAS_SIZE / 2,
             scale: 1,
@@ -61,21 +138,20 @@
         let scanLinePos = 0; // Current scanning coordinate
         let scanDirection = 'Y'; // 'Y' (Top to bottom), 'X' (Left to right)
         let settings = {
-            speed: 2.0,
+            speed: 1.0,      // New Default: 1.0
             wobble: 0,
-            noise: 0,
+            noise: 40,       // New Default: 40
             colorMode: 'color', // 'color' or 'bw'
             bgColor: '#ffffff',  // Default white background color
-            showInfo: false      // Render parameters overlay
+            showInfo: true       // New Default: true
         };
 
         // Animation and Rendering States
         let frameCount = 0;
-        let renderId = null; // High-efficiency requestAnimationFrame handle
+        let renderId = null;
 
         // Initialize App
         window.onload = function() {
-            // Fill background with elegant solid white background
             clearOutputFilm();
             
             // Setup mouse & touch listeners
@@ -117,22 +193,44 @@
                 }
             });
 
-            // Initial render call
+            // Initialize Language and default states
+            updateLanguageUI();
             triggerRender();
         };
 
-        // Event-driven rendering trigger: schedules a render frame ONLY when actively changing
+        // Language Switcher Function
+        function toggleLanguage() {
+            currentLang = (currentLang === 'en') ? 'zh' : 'en';
+            document.getElementById('langBtnText').innerText = (currentLang === 'en') ? 'English' : '中文';
+            updateLanguageUI();
+        }
+
+        function updateLanguageUI() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) {
+                    el.innerText = i18n[currentLang][key];
+                }
+            });
+            updateSpeedUI();
+            updateNoiseUI();
+            updateWobbleUI();
+            updatePlayBtnUI();
+            triggerRender();
+        }
+
+        // Event-driven rendering trigger
         function triggerRender() {
             if (!renderId) {
                 renderId = requestAnimationFrame(renderStep);
             }
         }
 
-        // Show interactive elegant toasts instead of alert
-        function showToast(msg) {
+        // Toast Messages
+        function showToast(msgKey) {
             const toast = document.getElementById('toastMessage');
             const toastText = document.getElementById('toastText');
-            toastText.textContent = msg;
+            toastText.textContent = i18n[currentLang][msgKey] || msgKey;
             toast.classList.remove('hidden');
             toast.classList.add('flex');
             
@@ -140,48 +238,6 @@
                 toast.classList.remove('flex');
                 toast.classList.add('hidden');
             }, 3000);
-        }
-
-        // High-performance offscreen grayscale pre-rendering
-        function generateGrayscaleBuffer() {
-            if (!imgState.loaded || !imgState.imgObj) return;
-
-            imgState.grayscaleCanvas = document.createElement('canvas');
-            imgState.grayscaleCanvas.width = imgState.imgObj.width;
-            imgState.grayscaleCanvas.height = imgState.imgObj.height;
-            const gCtx = imgState.grayscaleCanvas.getContext('2d');
-
-            // Apply filter and draw once
-            gCtx.filter = 'grayscale(100%)';
-            gCtx.drawImage(imgState.imgObj, 0, 0);
-            gCtx.filter = 'none';
-        }
-
-        // Load Default Image upon clicking the helper button ("image_46c448.jpg")
-        function loadDefaultImage() {
-            const img = new Image();
-            img.onload = function() {
-                imgState.imgObj = img;
-                imgState.loaded = true;
-                
-                // Pre-calculate grayscale on load to keep tick loops blazing fast
-                generateGrayscaleBuffer();
-                
-                // Auto fit and center on load
-                transformImage('fit');
-                
-                // Conditionally reset scan: Only reset if scan hasn't run or is finished.
-                // If 0 < scanLinePos < CANVAS_SIZE, we are paused and want to retain the scan results.
-                if (scanLinePos === 0 || scanLinePos >= CANVAS_SIZE) {
-                    resetScan();
-                } else {
-                    triggerRender();
-                }
-            };
-            img.onerror = function() {
-                showToast("未能加载测试图片，请上传本地图片。");
-            };
-            img.src = 'image_46c448.jpg';
         }
 
         // Handle raw image uploads
@@ -193,14 +249,8 @@
                     imgState.imgObj = img;
                     imgState.loaded = true;
                     
-                    // Pre-calculate grayscale on load
-                    generateGrayscaleBuffer();
-
-                    // Auto fit and center on load
                     transformImage('fit');
                     
-                    // Conditionally reset scan: Only reset if scan hasn't run or is finished.
-                    // If 0 < scanLinePos < CANVAS_SIZE, we are paused and want to retain the scan results.
                     if (scanLinePos === 0 || scanLinePos >= CANVAS_SIZE) {
                         resetScan();
                     } else {
@@ -214,7 +264,6 @@
 
         // Workspace Interaction Mechanics
         function setupCanvasInteraction() {
-            // Mouse Interaction
             canvasInteractive.addEventListener('mousedown', (e) => {
                 if (!imgState.loaded) return;
                 const rect = canvasInteractive.getBoundingClientRect();
@@ -251,7 +300,6 @@
                 }
             });
 
-            // Wheel Scaling
             canvasInteractive.addEventListener('wheel', (e) => {
                 if (!imgState.loaded) return;
                 e.preventDefault();
@@ -260,7 +308,7 @@
                 triggerRender();
             }, { passive: false });
 
-            // Touch interaction (Mobile Support)
+            // Touch support
             canvasInteractive.addEventListener('touchstart', (e) => {
                 if (!imgState.loaded) return;
                 if (e.touches.length === 1) {
@@ -303,21 +351,14 @@
             });
         }
 
-        // Adjust placement matrix and auto-adapt to workspace size perfectly
         function transformImage(action) {
             if (!imgState.loaded) return;
 
-            if (action === 'center') {
-                imgState.x = CANVAS_SIZE / 2;
-                imgState.y = CANVAS_SIZE / 2;
-                imgState.rotation = 0;
-                imgState.scale = 1;
-            } else if (action === 'rotate90') {
+            if (action === 'rotate90') {
                 imgState.rotation = (imgState.rotation + Math.PI / 2) % (Math.PI * 2);
             } else if (action === 'fit') {
                 const scaleW = CANVAS_SIZE / imgState.imgObj.width;
                 const scaleH = CANVAS_SIZE / imgState.imgObj.height;
-                // Auto adapt size perfectly to workspace container with slight margin padding
                 imgState.scale = Math.min(scaleW, scaleH) * 0.95;
                 imgState.x = CANVAS_SIZE / 2;
                 imgState.y = CANVAS_SIZE / 2;
@@ -326,49 +367,55 @@
             triggerRender();
         }
 
+        // Update UI dynamic readouts
+        function updateSpeedUI() {
+            const unit = i18n[currentLang].speedUnit;
+            document.getElementById('valSpeed').innerText = `${settings.speed.toFixed(1)} ${unit}`;
+        }
+        function updateNoiseUI() {
+            document.getElementById('valNoise').innerText = `${Math.floor(settings.noise)}%`;
+        }
+        function updateWobbleUI() {
+            document.getElementById('valWobble').innerText = `${settings.wobble.toFixed(1)} px`;
+        }
+
         // Update parameters from sliders
         function updateParam(param) {
             const inputVal = parseFloat(document.getElementById(`param${param}`).value);
             if (param === 'Speed') {
                 settings.speed = inputVal;
-                document.getElementById('valSpeed').innerText = `${inputVal.toFixed(1)} 像素/帧`;
+                updateSpeedUI();
             } else if (param === 'Wobble') {
                 settings.wobble = inputVal;
-                document.getElementById('valWobble').innerText = `${inputVal.toFixed(1)} px`;
+                updateWobbleUI();
             } else if (param === 'Noise') {
                 settings.noise = inputVal;
-                document.getElementById('valNoise').innerText = `${Math.floor(inputVal)}%`;
+                updateNoiseUI();
             }
             triggerRender();
         }
 
-        // Update Background Color dynamically and instantly without affecting foreground pixels
         function updateBgColor(val) {
             settings.bgColor = val;
             document.getElementById('valBgColor').innerText = val.toUpperCase();
-            
-            // Instantly apply the background color style to HTML Canvas containers
-            // We draw the color inside canvasOutput, so we only need to style canvasInteractive
             canvasInteractive.style.backgroundColor = val;
-            
             triggerRender();
         }
 
-        // Set Scanning Directions
         function setDirection(dir) {
             scanDirection = dir;
             
             document.querySelectorAll('.dir-btn').forEach(btn => {
-                btn.className = "dir-btn py-1.5 text-[10px] font-semibold rounded-lg border bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300 transition-all";
+                btn.className = "dir-btn py-1 text-[10px] font-semibold rounded-lg border bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300 transition-all";
             });
             
             const activeBtn = document.getElementById(`dirBtn${dir}`);
-            activeBtn.className = "dir-btn py-1.5 text-[10px] font-semibold rounded-lg border bg-emerald-500/10 border-emerald-500/50 text-emerald-300 transition-all";
+            activeBtn.className = "dir-btn py-1 text-[10px] font-semibold rounded-lg border bg-emerald-500/10 border-emerald-500/50 text-emerald-300 transition-all";
             
             resetScan();
         }
 
-        // Toggle Color vs Black & White
+        // Seamless non-destructive grayscale/color toggler
         function setColorMode(mode) {
             settings.colorMode = mode;
 
@@ -379,64 +426,50 @@
             const activeBtn = (mode === 'color') ? document.getElementById('colorModeBtnColor') : document.getElementById('colorModeBtnBW');
             activeBtn.className = "color-mode-btn py-1 text-[10px] font-semibold rounded-lg border bg-emerald-500/10 border-emerald-500/50 text-emerald-300 transition-all";
 
-            // If Mono selected, instantly convert existing accumulated pristine canvas to grayscale
-            if (mode === 'bw') {
-                applyGrayscaleToOutput();
-            } else {
-                // If switching back to color, we rely on the pristine scans accumulated so far
-                triggerRender();
-            }
+            // GPU Accelerated Visual Toggling for Interactive Canvas A (Zero Lag)
+            canvasInteractive.style.filter = (mode === 'bw') ? 'grayscale(100%)' : 'none';
+
+            // Triggers redraw in Output Canvas with dynamic 2D context filter integration
+            triggerRender();
         }
 
-        // High quality offscreen mono converter
-        function applyGrayscaleToOutput() {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = CANVAS_SIZE;
-            tempCanvas.height = CANVAS_SIZE;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            tempCtx.filter = 'grayscale(100%)';
-            tempCtx.drawImage(canvasOutputPristine, 0, 0);
-            
-            ctxOPristine.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            ctxOPristine.drawImage(tempCanvas, 0, 0);
-        }
-
-        // Toggle Parameter Overlay Rendering
         function toggleShowInfo() {
             settings.showInfo = paramShowInfo.checked;
             triggerRender();
         }
 
         function clearOutputFilm() {
-            // Keep output and pristine offscreen canvases fully transparent to support seamless CSS color changes
             ctxOPristine.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
             ctxO.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            
             triggerRender();
         }
 
-        // Play Pause Mechanism
+        function updatePlayBtnUI() {
+            if (isScanning) {
+                playIcon.className = "fa-solid fa-pause";
+                playText.innerText = i18n[currentLang].pauseScan;
+            } else {
+                playIcon.className = "fa-solid fa-play";
+                playText.innerText = scanLinePos > 0 && scanLinePos < CANVAS_SIZE 
+                    ? i18n[currentLang].continueScan 
+                    : i18n[currentLang].startScan;
+            }
+        }
+
         function toggleScan() {
             if (!imgState.loaded) {
-                showToast("请先在 A 操控台上传或粘贴一张图片后再进行扫描！");
+                showToast("toastNoImg");
                 return;
             }
 
             isScanning = !isScanning;
             if (isScanning) {
-                playIcon.className = "fa-solid fa-pause";
-                playText.innerText = "暂停扫描";
-                
-                // Auto reset position to start if scanner was at the end of canvas
                 if (scanLinePos >= CANVAS_SIZE) {
                     clearOutputFilm();
                     scanLinePos = 0;
                 }
-            } else {
-                playIcon.className = "fa-solid fa-play";
-                playText.innerText = "继续扫描";
             }
+            updatePlayBtnUI();
             triggerRender();
         }
 
@@ -445,38 +478,35 @@
             clearOutputFilm();
             
             isScanning = false;
-            playIcon.className = "fa-solid fa-play";
-            playText.innerText = "开始扫描";
+            updatePlayBtnUI();
             triggerRender();
         }
 
-        // Main Animation Step (Invoked on-demand)
+        // Render Step
         function renderStep() {
-            renderId = null; // Clear key so next frame can schedule
+            renderId = null;
             frameCount++;
 
-            // 1. Apply dynamic sine wave displacements if Wobble is on
+            // 1. Process automated wave motion
             processAutomation();
 
-            // 2. Render Workspace A CLEANly (without grid/laser for perfect slicing)
+            // 2. Render Workspace A
             renderInteractiveCanvas();
 
-            // 3. Slit Scan rendering projection to offscreen Pristine Canvas (Anti-aliased)
+            // 3. Process the Slit-scan onto cumulative buffer (Always color)
             processSlitScan();
 
-            // 4. Render the cumulative scanning result with post-process effects (e.g. Grayscale & Noise)
+            // 4. Render the visible output (Injects colorMode filter & noise dynamically)
             renderOutputCanvasWithPostProcess();
 
-            // 5. Draw overlays (laser lines and interactive guides) onto Workspace A for display
+            // 5. Drawing guidelines and laser
             renderInteractiveOverlays();
 
-            // Keep loop active ONLY if something is actively changing (saving resources)
             if (isScanning || imgState.isDragging) {
                 triggerRender();
             }
         }
 
-        // Handle automated sin wobbles
         function processAutomation() {
             if (imgState.loaded && isScanning && settings.wobble > 0) {
                 const waveOffset = Math.sin(frameCount * 0.12) * (settings.wobble * 0.15);
@@ -488,9 +518,7 @@
             }
         }
 
-        // Render Workspace Panel - Pure Image Pass
         function renderInteractiveCanvas() {
-            // Keep workspace canvas background transparent to let CSS bg-color show through
             ctxI.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
             if (imgState.loaded && imgState.imgObj) {
@@ -501,44 +529,33 @@
                 const w = imgState.imgObj.width * imgState.scale;
                 const h = imgState.imgObj.height * imgState.scale;
                 
-                // High Quality rendering settings for clean anti-aliasing (Anti-Jagged edges)
                 ctxI.imageSmoothingEnabled = true;
                 ctxI.imageSmoothingQuality = 'high';
 
-                // Render either the pre-rendered Grayscale buffer or standard color image
-                const activeSource = (settings.colorMode === 'bw' && imgState.grayscaleCanvas) 
-                    ? imgState.grayscaleCanvas 
-                    : imgState.imgObj;
-
-                ctxI.drawImage(activeSource, -w / 2, -h / 2, w, h);
+                ctxI.drawImage(imgState.imgObj, -w / 2, -h / 2, w, h);
                 ctxI.restore();
             } else {
-                // When no image is loaded, draw a gorgeous cyberpunk empty placeholder
                 ctxI.save();
                 ctxI.textAlign = 'center';
                 ctxI.textBaseline = 'middle';
                 
-                // Draw dashed outline
                 ctxI.strokeStyle = 'rgba(16, 185, 129, 0.2)';
                 ctxI.lineWidth = 2;
                 ctxI.setLineDash([10, 10]);
                 ctxI.strokeRect(40, 40, CANVAS_SIZE - 80, CANVAS_SIZE - 80);
                 
-                // Instructions Text
                 ctxI.fillStyle = '#64748b';
-                ctxI.font = '22px "Inter", sans-serif';
-                ctxI.fillText("等待载入艺术源文件...", CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
+                ctxI.font = '20px "Inter", sans-serif';
+                ctxI.fillText(i18n[currentLang].emptyPlaceholderTitle, CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 15);
                 
                 ctxI.fillStyle = '#475569';
-                ctxI.font = '14px "Inter", sans-serif';
-                ctxI.fillText("点击下方上传、拖拽至此、或者按 Ctrl+V 直接粘贴图片", CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 20);
+                ctxI.font = '12px "Inter", sans-serif';
+                ctxI.fillText(i18n[currentLang].emptyPlaceholderSub, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 20);
                 ctxI.restore();
             }
         }
 
-        // Draw Interactive Guide UI Overlays on Workspace Canvas AFTER capturing slice
         function renderInteractiveOverlays() {
-            // Subtle grid in Workspace background - OPTIMIZED: Batched paths to 1 drawcall instead of 40+
             ctxI.save();
             ctxI.strokeStyle = 'rgba(30, 41, 59, 0.6)';
             ctxI.lineWidth = 0.5;
@@ -550,7 +567,6 @@
             ctxI.stroke();
             ctxI.restore();
 
-            // Only show glowing scanner laser line if image has been loaded
             if (imgState.loaded) {
                 ctxI.save();
                 ctxI.strokeStyle = '#10b981';
@@ -577,70 +593,68 @@
             }
         }
 
-        // Accumulate scanned slices onto B Film canvas (Anti-aliased, zero-stutter)
         function processSlitScan() {
             if (!isScanning || !imgState.loaded) return;
 
             const currentSpeed = settings.speed;
             const startPos = scanLinePos;
             const endPos = scanLinePos + currentSpeed;
-            
-            // Sub-pixel precise sampling with micro-overlap (0.5px) to prevent sub-pixel white scanline gaps
             const overlap = 0.5;
 
             if (endPos > startPos && startPos < CANVAS_SIZE) {
                 ctxOPristine.save();
-                
-                // Keep image smoothing enabled to guarantee smooth, non-pixelated/non-jagged edges
                 ctxOPristine.imageSmoothingEnabled = true;
                 ctxOPristine.imageSmoothingQuality = 'high';
 
                 if (scanDirection === 'Y') {
                     ctxOPristine.drawImage(
                         canvasInteractive, 
-                        0, startPos, CANVAS_SIZE, (endPos - startPos) + overlap, // Source slice
-                        0, startPos, CANVAS_SIZE, (endPos - startPos) + overlap  // Target slice on film output
+                        0, startPos, CANVAS_SIZE, (endPos - startPos) + overlap,
+                        0, startPos, CANVAS_SIZE, (endPos - startPos) + overlap
                     );
                 } else {
                     ctxOPristine.drawImage(
                         canvasInteractive, 
-                        startPos, 0, (endPos - startPos) + overlap, CANVAS_SIZE, // Source slice
-                        startPos, 0, (endPos - startPos) + overlap, CANVAS_SIZE  // Target slice on film output
+                        startPos, 0, (endPos - startPos) + overlap, CANVAS_SIZE,
+                        startPos, 0, (endPos - startPos) + overlap, CANVAS_SIZE
                     );
                 }
                 ctxOPristine.restore();
             }
 
-            // Move the scanner bar
             scanLinePos += currentSpeed;
 
-            // Stop when single-pass is finished
             if (scanLinePos >= CANVAS_SIZE) {
                 isScanning = false;
-                playIcon.className = "fa-solid fa-play";
-                playText.innerText = "开始扫描";
+                updatePlayBtnUI();
                 triggerRender();
             }
         }
 
-        // Render the visible B canvas combining background, transparent pristine scans, noise & text parameters
         function renderOutputCanvasWithPostProcess() {
             ctxO.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
             
-            // 1. Fill solid background color directly onto canvas. 
-            // This guarantees preview color blending is 100% identical to final export.
+            ctxO.save();
+            // Integrated Non-destructive filter hook - transforms render on the fly seamlessly
+            if (settings.colorMode === 'bw') {
+                ctxO.filter = 'grayscale(100%)';
+            } else {
+                ctxO.filter = 'none';
+            }
+
+            // 1. Solid Film Base Color
             ctxO.fillStyle = settings.bgColor;
             ctxO.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-            // 2. Draw accumulated pristine scanned images (100% smooth, anti-aliased)
+            // 2. Draw pristine colors
             ctxO.drawImage(canvasOutputPristine, 0, 0);
+            ctxO.restore();
             
-            // 3. Apply adjustable dynamic noise overlay on top of solid background + image
+            // 3. Film Grain
             if (settings.noise > 0) {
                 ctxO.save();
-                // Map noise value 0-100 to 0.0 - 0.45 opacity for an aesthetic film grain look
                 ctxO.globalAlpha = (settings.noise / 100) * 0.45;
-                ctxO.globalCompositeOperation = 'overlay'; // Elegant analog film noise blending
+                ctxO.globalCompositeOperation = 'overlay';
                 
                 const pattern = ctxO.createPattern(noiseCanvas, 'repeat');
                 ctxO.fillStyle = pattern;
@@ -648,15 +662,14 @@
                 ctxO.restore();
             }
 
-            // 4. Render the 8px Monospace Parameter Overlay if enabled
+            // 4. Overlay metadata HUD
             if (settings.showInfo) {
                 ctxO.save();
-                ctxO.fillStyle = '#000000'; // Pure black text
+                ctxO.fillStyle = '#000000';
                 ctxO.font = '12px monospace';
                 ctxO.textAlign = 'left';
                 ctxO.textBaseline = 'bottom';
                 
-                // Pure English stats from Modules 2, 3, 4
                 const lines = [
                     `${scanDirection === 'Y' ? 'VERTICAL' : 'HORIZONTAL'}`,
                     `${settings.speed.toFixed(1)} PX/FRAME`,
@@ -666,9 +679,8 @@
                 
                 const startX = 20;
                 const startY = CANVAS_SIZE - 15;
-                const fontSize = 15; // Line spacing equal to font size (1x line-height)
+                const fontSize = 15;
 
-                // Render lines from bottom to top (last element of array on bottom-most position)
                 for (let i = 0; i < lines.length; i++) {
                     const lineIndex = lines.length - 1 - i;
                     ctxO.fillText(lines[lineIndex], startX, startY - (i * fontSize));
@@ -677,14 +689,12 @@
             }
         }
 
-        // Export masterpiece with baked background and noise
         function downloadMasterpiece() {
             if (!imgState.loaded) {
-                showToast("没有可导出的扫描结果，请先载入图片并进行一次扫描！");
+                showToast("toastNoImg");
                 return;
             }
             
-            // Output canvas is already perfectly rendered with background, image slices, noise & text
             const link = document.createElement('a');
             link.download = `scanner_distortion_art_${Date.now()}.png`;
             link.href = canvasOutput.toDataURL("image/png");
