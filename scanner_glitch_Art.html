@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>扫描仪位移故障艺术生成器 - Scanner Distortion Lab</title>
+    <title>Scanner Distortion Lab - Slit-Scan Glitch Art</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for Icons -->
@@ -36,19 +36,25 @@
                     <i class="fa-solid fa-print text-emerald-400 text-base animate-pulse"></i>
                 </div>
                 <div>
-                    <h1 class="text-base font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                    <h1 class="text-base font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400" data-i18n="title">
                         SCANNER DISTORTION LAB
                     </h1>
-                    <p class="text-[9px] text-slate-400">Slit-Scan Glitch Art • 扫描位移故障艺术生成器</p>
+                    <p class="text-[9px] text-slate-400" data-i18n="subtitle">Slit-Scan Glitch Art • Scanner Displacement Generator</p>
                 </div>
             </div>
+            
+            <!-- Language Toggle Button -->
+            <button onclick="toggleLanguage()" class="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 hover:text-white transition flex items-center gap-1.5">
+                <i class="fa-solid fa-language text-emerald-400"></i>
+                <span id="langBtnText">English</span>
+            </button>
         </div>
     </header>
 
-    <!-- Main Workspace Area (Filling Screen, No Overflow) -->
+    <!-- Main Workspace Area -->
     <main class="flex-grow flex flex-col justify-between max-w-7xl w-full mx-auto p-4 gap-4 overflow-hidden min-h-0">
         
-        <!-- Upper Panel: Horizontal stack of A and B (Flex-grow, equal widths) -->
+        <!-- Upper Panel: Horizontal stack of A and B -->
         <section class="flex-grow min-h-0 grid grid-cols-1 md:grid-cols-2 gap-4">
             
             <!-- Workspace A: Interactive Canvas -->
@@ -56,33 +62,26 @@
                 <div class="flex items-center justify-between mb-2 flex-shrink-0">
                     <span class="text-xs font-bold text-slate-300 tracking-wider flex items-center gap-2">
                         <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                        A. 互动操控台 (WORKSPACE)
+                        <span data-i18n="workspaceA">A. WORKSPACE</span>
                     </span>
-                    <span class="text-[10px] text-slate-500">拖拽移动图像 • 滚轮缩放</span>
+                    <span class="text-[10px] text-slate-500" data-i18n="workspaceASub">Drag to move • Scroll to zoom</span>
                 </div>
 
                 <!-- Interactive viewport container -->
                 <div class="flex-grow min-h-0 relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center select-none shadow-inner" id="interactiveContainer">
-                    <!-- Added inline background-color to dynamically change with CSS -->
                     <canvas id="canvasInteractive" class="max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing" style="aspect-ratio: 1/1; background-color: #ffffff;"></canvas>
                     
                     <!-- Overlay controls tip -->
                     <div class="absolute bottom-3 left-3 right-3 bg-slate-950/90 border border-slate-800 rounded-lg p-2 flex items-center justify-between text-[10px] text-slate-400 pointer-events-none">
-                        <span class="flex items-center gap-1"><i class="fa-solid fa-mouse"></i> 拖拽移动 • 滚轮缩放</span>
-                        <span class="flex items-center gap-1"><kbd class="px-1 bg-slate-800 rounded">R</kbd> 键重置</span>
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-mouse"></i> <span data-i18n="controlTip">Drag to move • Scroll to zoom</span></span>
+                        <span class="flex items-center gap-1"><kbd class="px-1 bg-slate-800 rounded">R</kbd> <span data-i18n="pressR">Press R to reset</span></span>
                     </div>
                 </div>
 
-                <!-- Interactive Transform Helpers -->
-                <div class="mt-2 grid grid-cols-3 gap-2 flex-shrink-0">
-                    <button onclick="transformImage('center')" class="py-1.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition" title="居中还原">
-                        <i class="fa-solid fa-align-center mr-1"></i> 居中图像
-                    </button>
-                    <button onclick="transformImage('rotate90')" class="py-1.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition" title="旋转90度">
-                        <i class="fa-solid fa-rotate-right mr-1"></i> 旋转 90°
-                    </button>
-                    <button onclick="transformImage('fit')" class="py-1.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition" title="缩放到画布大小">
-                        <i class="fa-solid fa-expand mr-1"></i> 自动适配
+                <!-- Interactive Transform Helper -->
+                <div class="mt-2 flex-shrink-0">
+                    <button onclick="transformImage('rotate90')" class="w-full py-1.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition border border-slate-700/50 flex items-center justify-center gap-1" title="旋转90度">
+                        <i class="fa-solid fa-rotate-right text-emerald-400"></i> <span data-i18n="rotate90">Rotate 90°</span>
                     </button>
                 </div>
             </div>
@@ -92,14 +91,13 @@
                 <div class="flex items-center justify-between mb-2 flex-shrink-0">
                     <span class="text-xs font-bold text-emerald-400 tracking-wider flex items-center gap-2">
                         <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        B. 扫描结果 (SCANNING RESULT)
+                        <span data-i18n="workspaceB">B. SCANNING RESULT</span>
                     </span>
-                    <span class="text-[10px] text-slate-500">超清无杂质输出</span>
+                    <span class="text-[10px] text-slate-500" data-i18n="workspaceBSub">Pristine High-Res Output</span>
                 </div>
 
                 <!-- Scanned film viewport container -->
                 <div class="flex-grow min-h-0 relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shadow-inner">
-                    <!-- Added inline background-color to dynamically change with CSS -->
                     <canvas id="canvasOutput" class="max-w-full max-h-full object-contain" style="aspect-ratio: 1/1; background-color: #ffffff;"></canvas>
 
                     <!-- Live indicator -->
@@ -112,103 +110,83 @@
                 <!-- Output Helpers and Export -->
                 <div class="mt-2 flex gap-2 flex-shrink-0">
                     <button onclick="clearOutputFilm()" class="flex-1 py-1.5 text-[11px] bg-slate-800 hover:bg-red-950/40 hover:text-red-400 hover:border-red-900/50 text-slate-300 border border-transparent rounded-md transition">
-                        <i class="fa-solid fa-trash mr-1"></i> 擦除底片
+                        <i class="fa-solid fa-trash mr-1"></i> <span data-i18n="clearFilm">Clear Film</span>
                     </button>
-                    <button onclick="downloadMasterpiece()" class="flex-1 py-1.5 text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition flex items-center justify-center gap-1 font-bold">
-                        <i class="fa-solid fa-download mr-1"></i> 导出作品
+                    <button onclick="downloadMasterpiece()" class="flex-1 py-1.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-white rounded-md transition flex items-center justify-center gap-1 font-bold">
+                        <i class="fa-solid fa-download mr-1"></i> <span data-i18n="exportArt">Export Artwork</span>
                     </button>
                 </div>
             </div>
 
         </section>
 
-        <!-- Lower Panel: 4-Column Control Dock (Small height) -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex-shrink-0">
+        <!-- Lower Panel: 4-Column Control Dock (Compact) -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-3.5 bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5 backdrop-blur-sm flex-shrink-0">
             
             <!-- Module 1: Image Input -->
-            <div class="flex flex-col justify-between border-r border-slate-800/80 pr-2 last:border-0">
-                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">
-                    <i class="fa-solid fa-image"></i> 1. 输入源图像
+            <div class="flex flex-col justify-between border-r border-slate-800/80 pr-3.5 last:border-0">
+                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-image"></i> <span data-i18n="uploadTitle">1. SOURCE IMAGE</span>
                 </h2>
-                <div class="flex-grow flex flex-col gap-2 justify-center">
-                    <div class="relative group border border-dashed border-slate-700 hover:border-emerald-500/50 rounded-lg p-2.5 transition bg-slate-950/40 hover:bg-slate-950/70 text-center cursor-pointer">
+                <div class="flex-grow flex flex-col justify-center">
+                    <div class="relative group border border-dashed border-slate-700 hover:border-emerald-500/50 rounded-lg p-3 transition bg-slate-950/40 hover:bg-slate-950/70 text-center cursor-pointer">
                         <input type="file" id="imageLoader" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                        <div class="flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-cloud-arrow-up text-lg text-slate-400 group-hover:text-emerald-400 transition-colors"></i>
-                            <span class="text-xs font-semibold text-slate-300">上传图片或剪贴板粘贴</span>
+                        <div class="flex flex-col items-center justify-center gap-1">
+                            <i class="fa-solid fa-cloud-arrow-up text-base text-slate-400 group-hover:text-emerald-400 transition-colors"></i>
+                            <span class="text-[11px] font-semibold text-slate-300" data-i18n="uploadBtn">Upload Image or Paste</span>
                         </div>
                     </div>
-                    <!-- Reference file "image_46c448.jpg" implemented as portrait test file -->
-                    <button onclick="loadDefaultImage()" class="py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] font-medium text-slate-300 hover:text-white transition flex items-center justify-center gap-1">
-                        <i class="fa-solid fa-user text-emerald-400"></i> 一键载入测试人像图片
-                    </button>
                 </div>
             </div>
 
-            <!-- Module 2: Scanning Parameters -->
-            <div class="flex flex-col justify-between border-r border-slate-800/80 px-2 last:border-0">
-                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">
-                    <i class="fa-solid fa-sliders"></i> 2. 扫描参数设置
+            <!-- Module 2: Scanning Parameters & Direction -->
+            <div class="flex flex-col justify-between border-r border-slate-800/80 px-3.5 last:border-0">
+                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-sliders"></i> <span data-i18n="paramTitle">2. PARAMETERS & DIRECTION</span>
                 </h2>
                 <div class="flex-grow flex flex-col justify-center gap-2">
-                    <div class="flex gap-1.5">
-                        <button id="btnPlayPause" onclick="toggleScan()" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-1">
-                            <i id="playIcon" class="fa-solid fa-play"></i>
-                            <span id="playText">开始扫描</span>
-                        </button>
-                        <button onclick="resetScan()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg font-bold text-xs transition flex items-center justify-center" title="重置扫描">
-                            <i class="fa-solid fa-rotate-left"></i>
-                        </button>
-                    </div>
+                    <!-- Speed -->
                     <div>
                         <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
-                            <span>扫描速度</span>
-                            <span class="code-font text-emerald-400" id="valSpeed">2.0 像素/帧</span>
+                            <span data-i18n="speedLabel">Scan Speed</span>
+                            <span class="code-font text-emerald-400" id="valSpeed">1.0 px/frame</span>
                         </div>
-                        <input type="range" id="paramSpeed" min="0.5" max="8" step="0.1" value="2.0" oninput="updateParam('Speed')" class="w-full accent-emerald-400 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                        <input type="range" id="paramSpeed" min="0.5" max="8" step="0.1" value="1.0" oninput="updateParam('Speed')" class="w-full accent-emerald-400 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <!-- Direction -->
+                    <div>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button id="dirBtnY" onclick="setDirection('Y')" class="dir-btn py-1 text-[10px] font-semibold rounded-lg border bg-emerald-500/10 border-emerald-500/50 text-emerald-300 transition-all">
+                                <i class="fa-solid fa-arrow-down mr-0.5"></i> <span data-i18n="dirY">Vertical (Y)</span>
+                            </button>
+                            <button id="dirBtnX" onclick="setDirection('X')" class="dir-btn py-1 text-[10px] font-semibold rounded-lg border bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300 transition-all">
+                                <i class="fa-solid fa-arrow-right mr-0.5"></i> <span data-i18n="dirX">Horizontal (X)</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Module 3: Scanning Direction -->
-            <div class="flex flex-col justify-between border-r border-slate-800/80 px-2 last:border-0">
-                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">
-                    <i class="fa-solid fa-compass"></i> 3. 扫描运动方向
-                </h2>
-                <div class="flex-grow flex flex-col justify-center gap-2">
-                    <div class="grid grid-cols-2 gap-1.5">
-                        <button id="dirBtnY" onclick="setDirection('Y')" class="dir-btn py-1.5 text-[10px] font-semibold rounded-lg border bg-emerald-500/10 border-emerald-500/50 text-emerald-300 transition-all">
-                            <i class="fa-solid fa-arrow-down mr-1"></i> 纵向 (Y)
-                        </button>
-                        <button id="dirBtnX" onclick="setDirection('X')" class="dir-btn py-1.5 text-[10px] font-semibold rounded-lg border bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300 transition-all">
-                            <i class="fa-solid fa-arrow-right mr-1"></i> 横向 (X)
-                        </button>
-                    </div>
-                    <div class="text-[9px] text-slate-500 leading-tight">
-                        改变运动方向将自动重置底片。
-                    </div>
-                </div>
-            </div>
-
-            <!-- Module 4: Colors, Noise & Wobble -->
-            <div class="flex flex-col justify-between px-2 last:border-0">
-                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">
-                    <i class="fa-solid fa-palette"></i> 4. 色彩、噪点与抖动
+            <!-- Module 3: Colors, Noise & Wobble -->
+            <div class="flex flex-col justify-between border-r border-slate-800/80 px-3.5 last:border-0">
+                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-palette"></i> <span data-i18n="effectsTitle">3. COLOR, NOISE & WOBBLE</span>
                 </h2>
                 <div class="flex-grow flex flex-col justify-center gap-1.5">
+                    <!-- Color Mode -->
                     <div class="grid grid-cols-2 gap-1.5">
                         <button id="colorModeBtnColor" onclick="setColorMode('color')" class="color-mode-btn py-1 text-[10px] font-semibold rounded-lg border bg-emerald-500/10 border-emerald-500/50 text-emerald-300 transition-all">
-                            <i class="fa-solid fa-palette mr-0.5"></i> 彩色 (Color)
+                            <i class="fa-solid fa-palette mr-0.5"></i> <span data-i18n="colorBtn">Color</span>
                         </button>
                         <button id="colorModeBtnBW" onclick="setColorMode('bw')" class="color-mode-btn py-1 text-[10px] font-semibold rounded-lg border bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300 transition-all">
-                            <i class="fa-solid fa-circle-half-stroke mr-0.5"></i> 黑白 (Mono)
+                            <i class="fa-solid fa-circle-half-stroke mr-0.5"></i> <span data-i18n="monoBtn">Mono</span>
                         </button>
                     </div>
                     
-                    <!-- Background Color Input with Eyedropper support (CSS-driven for Zero lag) -->
+                    <!-- Background Color Input -->
                     <div class="flex items-center justify-between">
                         <span class="text-[10px] text-slate-400 flex items-center gap-1">
-                            <i class="fa-solid fa-eye-dropper text-[9px] text-emerald-400"></i> 底片背景色
+                            <i class="fa-solid fa-eye-dropper text-[9px] text-emerald-400"></i> <span data-i18n="bgColorLabel">Background Color</span>
                         </span>
                         <div class="flex items-center gap-1.5 bg-slate-950/60 border border-slate-800 rounded px-1.5 py-0.5">
                             <input type="color" id="paramBgColor" value="#ffffff" oninput="updateBgColor(this.value)" class="w-4 h-4 bg-transparent border-0 cursor-pointer rounded-sm overflow-hidden p-0">
@@ -216,19 +194,19 @@
                         </div>
                     </div>
 
-                    <!-- Noise Overlay Amount Slider -->
+                    <!-- Noise Amount Slider -->
                     <div>
                         <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
-                            <span>噪点颗粒度</span>
-                            <span class="code-font text-emerald-400" id="valNoise">0%</span>
+                            <span data-i18n="noiseLabel">Noise Grain</span>
+                            <span class="code-font text-emerald-400" id="valNoise">40%</span>
                         </div>
-                        <input type="range" id="paramNoise" min="0" max="100" step="1" value="0" oninput="updateParam('Noise')" class="w-full accent-emerald-400 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                        <input type="range" id="paramNoise" min="0" max="100" step="1" value="40" oninput="updateParam('Noise')" class="w-full accent-emerald-400 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
                     </div>
 
                     <!-- Wobble Displacement -->
                     <div>
                         <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
-                            <span>正弦自动波形抖动</span>
+                            <span data-i18n="wobbleLabel">Sine Wobble Displacement</span>
                             <span class="code-font text-emerald-400" id="valWobble">0.0 px</span>
                         </div>
                         <input type="range" id="paramWobble" min="0" max="100" step="1" value="0" oninput="updateParam('Wobble')" class="w-full accent-emerald-400 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
@@ -237,10 +215,27 @@
                     <!-- Show Parameter Overlay Toggle -->
                     <div class="flex items-center justify-between border-t border-slate-800/60 pt-1">
                         <span class="text-[10px] text-slate-400 flex items-center gap-1">
-                            <i class="fa-solid fa-circle-info text-[9px] text-emerald-400"></i> 显示参数信息 (Info)
+                            <i class="fa-solid fa-circle-info text-[9px] text-emerald-400"></i> <span data-i18n="showInfoLabel">Show Parameter Info</span>
                         </span>
-                        <input type="checkbox" id="paramShowInfo" onchange="toggleShowInfo()" class="w-3.5 h-3.5 rounded accent-emerald-400 cursor-pointer">
+                        <input type="checkbox" id="paramShowInfo" onchange="toggleShowInfo()" checked class="w-3.5 h-3.5 rounded accent-emerald-400 cursor-pointer">
                     </div>
+                </div>
+            </div>
+
+            <!-- Module 4: Run Controls (Placed last) -->
+            <div class="flex flex-col justify-between px-3.5">
+                <h2 class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-play"></i> <span data-i18n="controlTitle">4. Start to Scan</span>
+                </h2>
+                <div class="flex-grow flex flex-col justify-center gap-2">
+                    <button id="btnPlayPause" onclick="toggleScan()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20">
+                        <i id="playIcon" class="fa-solid fa-play"></i>
+                        <span id="playText" data-i18n="startScan">Start Scan</span>
+                    </button>
+                    <button onclick="resetScan()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span data-i18n="resetScan">Reset Scan</span>
+                    </button>
                 </div>
             </div>
 
@@ -251,16 +246,15 @@
     <!-- Custom Notification/Message Overlay -->
     <div id="toastMessage" class="fixed bottom-6 right-6 px-4 py-3 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-md hidden items-center gap-2 transition-all duration-300 z-50">
         <i class="fa-solid fa-circle-exclamation text-sm"></i>
-        <span id="toastText">请先加载一张图片！</span>
+        <span id="toastText">Please upload or paste an image first!</span>
     </div>
 
     <!-- Footer -->
     <footer class="border-t border-slate-800 bg-slate-950 py-2 px-6 flex-shrink-0 text-center text-[10px] text-slate-500">
-        <p>© 2026 Scanner Distortion Lab • 探索时空的重组形态</p>
+        <p data-i18n="pressR">© 2026 Scanner Distortion Lab • Exploring space-time recombination.</p>
     </footer>
 
-    <!-- Script Engine -->
-
+   
     <script src="https://yhhydesign.github.io/js_hosting/scanner.js"></script>
 
 </body>
