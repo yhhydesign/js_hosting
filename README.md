@@ -1,1 +1,1 @@
-# typowow-js-hosting
+# js_hosting
