@@ -193,6 +193,27 @@
                 }
             });
 
+            // Bind Event Listeners replacing inline event handlers
+            document.getElementById('btnToggleLanguage').addEventListener('click', toggleLanguage);
+            document.getElementById('btnRotate90').addEventListener('click', () => transformImage('rotate90'));
+            document.getElementById('btnClearFilm').addEventListener('click', clearOutputFilm);
+            document.getElementById('btnDownloadMasterpiece').addEventListener('click', downloadMasterpiece);
+            
+            document.getElementById('paramSpeed').addEventListener('input', () => updateParam('Speed'));
+            document.getElementById('dirBtnY').addEventListener('click', () => setDirection('Y'));
+            document.getElementById('dirBtnX').addEventListener('click', () => setDirection('X'));
+            
+            document.getElementById('colorModeBtnColor').addEventListener('click', () => setColorMode('color'));
+            document.getElementById('colorModeBtnBW').addEventListener('click', () => setColorMode('bw'));
+            
+            document.getElementById('paramBgColor').addEventListener('input', (e) => updateBgColor(e.target.value));
+            document.getElementById('paramNoise').addEventListener('input', () => updateParam('Noise'));
+            document.getElementById('paramWobble').addEventListener('input', () => updateParam('Wobble'));
+            document.getElementById('paramShowInfo').addEventListener('change', toggleShowInfo);
+            
+            document.getElementById('btnPlayPause').addEventListener('click', toggleScan);
+            document.getElementById('btnResetScan').addEventListener('click', resetScan);
+
             // Initialize Language and default states
             updateLanguageUI();
             triggerRender();
@@ -456,6 +477,7 @@
             }
         }
 
+        // Controls play/pause
         function toggleScan() {
             if (!imgState.loaded) {
                 showToast("toastNoImg");
