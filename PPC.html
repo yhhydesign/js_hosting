@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>创意拍照工具</title>
+  <style>
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none; -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .app {
+      display: flex; flex-direction: column;
+      height: 100%; height: 100dvh;
+    }
+
+    /* ── Camera / Image Area ── */
+    .camera-area {
+      flex: 1; position: relative; overflow: hidden; background: #111;
+    }
+    #video, #bgImage {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    #bgImage { display: none; }
+    #bgImage.visible { display: block; }
+    #clipsCanvas {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; z-index: 2;
+    }
+    #overlayCanvas {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; z-index: 3;
+      touch-action: none; cursor: crosshair;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; justify-content: center; align-items: center;
+      padding: 14px 20px;
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      gap: 14px; flex-shrink: 0;
+    }
+    .btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 12px 22px; border: none;
+      border-radius: 25px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s ease;
+      white-space: nowrap; outline: none;
+    }
+    .btn:active { transform: scale(0.94); opacity: 0.8; }
+    .btn-save {
+      background: #fff; color: #000;
+      padding: 14px 32px; font-size: 16px;
+      box-shadow: 0 2px 12px rgba(255,255,255,0.2);
+    }
+    .btn-undo, .btn-reset { background: rgba(255,255,255,0.12); color: #fff; }
+
+    /* ── Hint ── */
+    .hint {
+      position: absolute; top: 24px; left: 50%;
+      transform: translateX(-50%); z-index: 10;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      color: #fff; padding: 10px 22px; border-radius: 25px;
+      font-size: 13px; letter-spacing: 0.5px;
+      pointer-events: none; transition: opacity 0.4s ease;
+      white-space: nowrap;
+    }
+
+    /* ── Clip Count ── */
+    .clip-count {
+      position: absolute; top: 24px; right: 20px; z-index: 10;
+      background: rgba(0,0,0,0.55); color: #fff;
+      font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: 15px;
+      pointer-events: none; transition: opacity 0.3s; opacity: 0;
+    }
+    .clip-count.visible { opacity: 1; }
+
+    /* ── Loading ── */
+    .loading-overlay {
+      position: absolute; inset: 0; z-index: 20;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; color: #fff; font-size: 14px; gap: 16px;
+      transition: opacity 0.4s ease;
+    }
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error / Fallback ── */
+    .error-overlay {
+      position: absolute; inset: 0; z-index: 25;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; color: #fff;
+      text-align: center; padding: 40px; gap: 20px;
+    }
+    .error-overlay.show { display: flex; }
+    .error-overlay .icon { font-size: 48px; }
+    .error-overlay p { font-size: 14px; opacity: 0.7; line-height: 1.6; }
+    .btn-upload {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 30px; border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 30px; background: rgba(255,255,255,0.1);
+      color: #fff; font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-upload:active { background: rgba(255,255,255,0.2); transform: scale(0.96); }
+    .btn-retry {
+      margin-top: 4px; padding: 10px 28px; border: none;
+      border-radius: 25px; background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.7); font-size: 13px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-retry:active { background: rgba(255,255,255,0.15); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      color: #fff; padding: 14px 28px; border-radius: 14px;
+      font-size: 14px; font-weight: 500; z-index: 100;
+      pointer-events: none; opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+    /* ── Paste Flash ── */
+    @keyframes pasteFlash { 0% { opacity: 0.5; } 100% { opacity: 0; } }
+    .flash-overlay {
+      position: absolute; background: rgba(255,255,255,0.25);
+      border-radius: 2px; z-index: 5;
+      pointer-events: none;
+      animation: pasteFlash 0.4s ease-out forwards;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="camera-area" id="cameraArea">
+      <video id="video" autoplay playsinline muted></video>
+      <img id="bgImage" alt="" />
+      <canvas id="clipsCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+
+      <div class="hint" id="hint">👆 在画面上滑动/拖拽框选区域</div>
+      <div class="clip-count" id="clipCount">0 层</div>
+
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <span>正在启动相机…</span>
+      </div>
+
+      <div class="error-overlay" id="errorOverlay">
+        <div class="icon">📷</div>
+        <p>无法访问相机</p>
+        <p>你可以从相册中选择一张照片，同样可以使用框选粘贴功能</p>
+        <button class="btn-upload" id="uploadBtn">🖼 从相册选择照片</button>
+        <button class="btn-retry" id="retryCameraBtn">重试相机</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-undo" id="undoBtn">↩ 撤销</button>
+      <button class="btn btn-reset" id="resetBtn">🗑 清空</button>
+      <button class="btn btn-save" id="saveBtn">💾 保存照片</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- 隐藏的文件选择器 -->
+  <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+  <script>
+    (async function () {
+      /* =============================================
+         DOM References
+         ============================================= */
+      const video           = document.getElementById('video');
+      const bgImage         = document.getElementById('bgImage');
+      const clipsCanvas     = document.getElementById('clipsCanvas');
+      const clipsCtx        = clipsCanvas.getContext('2d');
+      const overlayCanvas   = document.getElementById('overlayCanvas');
+      const overlayCtx      = overlayCanvas.getContext('2d');
+      const cameraArea      = document.getElementById('cameraArea');
+      const hint            = document.getElementById('hint');
+      const clipCountEl     = document.getElementById('clipCount');
+      const saveBtn         = document.getElementById('saveBtn');
+      const undoBtn         = document.getElementById('undoBtn');
+      const resetBtn        = document.getElementById('resetBtn');
+      const toastEl         = document.getElementById('toast');
+      const loadingOverlay  = document.getElementById('loadingOverlay');
+      const errorOverlay    = document.getElementById('errorOverlay');
+      const uploadBtn       = document.getElementById('uploadBtn');
+      const retryCameraBtn  = document.getElementById('retryCameraBtn');
+      const fileInput       = document.getElementById('fileInput');
+
+      /* =============================================
+         State
+         ============================================= */
+      let isSelecting  = false;
+      let startX = 0, startY = 0;
+      let currentX = 0, currentY = 0;
+      /** @type {{canvas:HTMLCanvasElement, x:number, y:number, w:number, h:number}[]} */
+      let clips          = [];
+      let sourceReady    = false;  // 视频或图片就绪
+      let sourceType     = 'none';  // 'camera' | 'image'
+      let toastTimer     = null;
+
+      /* =============================================
+         Source Abstraction – 统一视频和图片来源
+         ============================================= */
+      /** 返回当前活跃的来源元素 */
+      function getSourceEl() {
+        if (sourceType === 'image' && bgImage.complete && bgImage.naturalWidth) {
+          return bgImage;
+        }
+        return video;
+      }
+
+      /** 返回来源原始尺寸 */
+      function getSourceSize() {
+        const el = getSourceEl();
+        if (el === bgImage) {
+          return { w: bgImage.naturalWidth, h: bgImage.naturalHeight };
+        }
+        return { w: video.videoWidth || 0, h: video.videoHeight || 0 };
+      }
+
+      /* =============================================
+         Toast
+         ============================================= */
+      function showToast(msg, duration = 1500) {
+        if (toastTimer) clearTimeout(toastTimer);
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
+      }
+
+      /* =============================================
+         Camera Init (优先相机)
+         ============================================= */
+      async function initCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'environment',
+              width:  { ideal: 1920 },
+              height: { ideal: 1080 }
+            },
+            audio: false
+          });
+          video.srcObject = stream;
+
+          video.addEventListener('loadedmetadata', () => {
+            sourceType  = 'camera';
+            sourceReady = true;
+            bgImage.classList.remove('visible');
+            resizeCanvases();
+            loadingOverlay.classList.add('hidden');
+            errorOverlay.classList.remove('show');
+          });
+
+          await video.play();
+        } catch (err) {
+          console.warn('Camera unavailable:', err.message);
+          // 相机不可用 → 展示上传入口
+          loadingOverlay.classList.add('hidden');
+          errorOverlay.classList.add('show');
+        }
+      }
+
+      /* =============================================
+         Image Fallback – 从相册选择照片作为背景
+         ============================================= */
+      uploadBtn.addEventListener('click', () => fileInput.click());
+      retryCameraBtn.addEventListener('click', () => {
+        errorOverlay.classList.remove('show');
+        loadingOverlay.classList.remove('hidden');
+        initCamera();
+      });
+
+      fileInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          bgImage.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      bgImage.addEventListener('load', () => {
+        sourceType  = 'image';
+        sourceReady = true;
+        bgImage.classList.add('visible');
+        errorOverlay.classList.remove('show');
+        loadingOverlay.classList.add('hidden');
+        resizeCanvases();
+        showToast('照片已加载，可以框选了');
+      });
+
+      /* =============================================
+         Canvas Resize
+         ============================================= */
+      function resizeCanvases() {
+        const rect = cameraArea.getBoundingClientRect();
+        const dpr  = window.devicePixelRatio || 1;
+        const saved = [...clips];
+
+        [clipsCanvas, overlayCanvas].forEach(c => {
+          c.width  = rect.width  * dpr;
+          c.height = rect.height * dpr;
+        });
+
+        redrawClips(saved);
+      }
+
+      function redrawClips(list) {
+        const dpr = window.devicePixelRatio || 1;
+        clipsCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        clipsCtx.clearRect(0, 0, clipsCanvas.width, clipsCanvas.height);
+        for (const clip of list) {
+          clipsCtx.drawImage(clip.canvas, clip.x, clip.y, clip.w, clip.h);
+        }
+      }
+
+      window.addEventListener('resize', () => {
+        if (sourceReady) resizeCanvases();
+      });
+
+      /* =============================================
+         object-fit:cover 坐标映射
+         ============================================= */
+      function getSourceMapping() {
+        const cw = cameraArea.clientWidth;
+        const ch = cameraArea.clientHeight;
+        const { w: sw, h: sh } = getSourceSize();
+        if (!sw || !sh) return { scale: 1, offX: 0, offY: 0 };
+
+        const sa = sw / sh;
+        const ca = cw / ch;
+
+        if (sa > ca) {
+          const s = ch / sh;
+          return { scale: s, offX: (cw - sw * s) / 2, offY: 0 };
+        }
+        const s = cw / sw;
+        return { scale: s, offX: 0, offY: (ch - sh * s) / 2 };
+      }
+
+      /* =============================================
+         Position Helpers
+         ============================================= */
+      function clientToCanvas(clientX, clientY) {
+        const r = overlayCanvas.getBoundingClientRect();
+        return { x: clientX - r.left, y: clientY - r.top };
+      }
+
+      /* =============================================
+         Selection Start / Move / End
+         ============================================= */
+      function beginSelection(px, py) {
+        if (!sourceReady) return;
+        startX = currentX = px;
+        startY = currentY = py;
+        isSelecting = true;
+        drawOverlay();
+      }
+
+      function updateSelection(px, py) {
+        if (!isSelecting) return;
+        currentX = px;
+        currentY = py;
+        drawOverlay();
+      }
+
+      function endSelection() {
+        if (!isSelecting) return;
+        isSelecting = false;
+        captureAndPaste();
+        clearOverlay();
+      }
+
+      /* =============================================
+         Touch Events (移动端)
+         ============================================= */
+      overlayCanvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const p = clientToCanvas(t.clientX, t.clientY);
+        beginSelection(p.x, p.y);
+      }, { passive: false });
+
+      overlayCanvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const p = clientToCanvas(t.clientX, t.clientY);
+        updateSelection(p.x, p.y);
+      }, { passive: false });
+
+      overlayCanvas.addEventListener('touchend', e => {
+        e.preventDefault();
+        endSelection();
+      });
+
+      overlayCanvas.addEventListener('touchcancel', () => {
+        if (isSelecting) { isSelecting = false; clearOverlay(); }
+      });
+
+      /* =============================================
+         Mouse Events (桌面端)
+         ============================================= */
+      overlayCanvas.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const p = clientToCanvas(e.clientX, e.clientY);
+        beginSelection(p.x, p.y);
+
+        // 在 document 上监听移动和释放，防止鼠标移出 canvas 后丢失事件
+        document.addEventListener('mousemove', onDocMouseMove);
+        document.addEventListener('mouseup', onDocMouseUp);
+      });
+
+      function onDocMouseMove(e) {
+        const p = clientToCanvas(e.clientX, e.clientY);
+        updateSelection(p.x, p.y);
+      }
+
+      function onDocMouseUp(e) {
+        document.removeEventListener('mousemove', onDocMouseMove);
+        document.removeEventListener('mouseup', onDocMouseUp);
+        endSelection();
+      }
+
+      // 鼠标移出窗口时取消
+      document.addEventListener('mouseleave', () => {
+        if (isSelecting) {
+          document.removeEventListener('mousemove', onDocMouseMove);
+          document.removeEventListener('mouseup', onDocMouseUp);
+          isSelecting = false;
+          clearOverlay();
+        }
+      });
+
+      /* =============================================
+         Overlay – 框选绘制
+         ============================================= */
+      function drawOverlay() {
+        const dpr = window.devicePixelRatio || 1;
+        overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        if (!isSelecting) return;
+
+        const ww = cameraArea.clientWidth;
+        const wh = cameraArea.clientHeight;
+        const x  = Math.min(startX, currentX);
+        const y  = Math.min(startY, currentY);
+        const w  = Math.abs(currentX - startX);
+        const h  = Math.abs(currentY - startY);
+        if (w < 3 || h < 3) return;
+
+        // 外部暗色遮罩
+        overlayCtx.fillStyle = 'rgba(0,0,0,0.35)';
+        overlayCtx.fillRect(0, 0, ww, y);
+        overlayCtx.fillRect(0, y + h, ww, wh - y - h);
+        overlayCtx.fillRect(0, y, x, h);
+        overlayCtx.fillRect(x + w, y, ww - x - w, h);
+
+        // 虚线边框
+        overlayCtx.save();
+        overlayCtx.strokeStyle = '#fff';
+        overlayCtx.lineWidth   = 2.5;
+        overlayCtx.shadowColor = 'rgba(0,0,0,0.5)';
+        overlayCtx.shadowBlur  = 6;
+        overlayCtx.setLineDash([8, 4]);
+        overlayCtx.strokeRect(x, y, w, h);
+        overlayCtx.setLineDash([]);
+        overlayCtx.restore();
+
+        // 四角手柄
+        const hs = 7;
+        overlayCtx.fillStyle = '#fff';
+        overlayCtx.shadowColor = 'rgba(0,0,0,0.4)';
+        overlayCtx.shadowBlur = 4;
+        [
+          [x - hs/2, y - hs/2],
+          [x + w - hs/2, y - hs/2],
+          [x - hs/2, y + h - hs/2],
+          [x + w - hs/2, y + h - hs/2]
+        ].forEach(([cx, cy]) => overlayCtx.fillRect(cx, cy, hs, hs));
+        overlayCtx.shadowBlur = 0;
+
+        // 尺寸标签
+        const label  = `${Math.round(w)} × ${Math.round(h)}`;
+        const labelX = x + w / 2;
+        const labelY = y > 28 ? y - 14 : y + h + 16;
+        const textW  = overlayCtx.measureText(label).width;
+        overlayCtx.fillStyle = 'rgba(0,0,0,0.6)';
+        overlayCtx.fillRect(labelX - textW/2 - 10, labelY - 10, textW + 20, 20);
+        overlayCtx.fillStyle = '#fff';
+        overlayCtx.font = '600 12px -apple-system,BlinkMacSystemFont,sans-serif';
+        overlayCtx.textAlign = 'center';
+        overlayCtx.textBaseline = 'middle';
+        overlayCtx.fillText(label, labelX, labelY);
+      }
+
+      function clearOverlay() {
+        overlayCtx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      }
+
+      /* =============================================
+         Capture & Paste
+         ============================================= */
+      function captureAndPaste() {
+        if (!sourceReady) return;
+
+        const x = Math.min(startX, currentX);
+        const y = Math.min(startY, currentY);
+        const w = Math.abs(currentX - startX);
+        const h = Math.abs(currentY - startY);
+        if (w < 10 || h < 10) return;
+
+        const srcEl = getSourceEl();
+        const { w: srcW, h: srcH } = getSourceSize();
+        const { scale, offX, offY } = getSourceMapping();
+
+        // 显示坐标 → 源坐标
+        const sx = (x - offX) / scale;
+        const sy = (y - offY) / scale;
+        const sw = w / scale;
+        const sh = h / scale;
+
+        // Clamp 到源边界
+        const cx = Math.max(0, sx);
+        const cy = Math.max(0, sy);
+        const cw = Math.min(sw, srcW - cx);
+        const ch = Math.min(sh, srcH - cy);
+        if (cw <= 0 || ch <= 0) return;
+
+        // 离屏 canvas 存储切片
+        const clipCanvas = document.createElement('canvas');
+        clipCanvas.width  = Math.round(cw);
+        clipCanvas.height = Math.round(ch);
+        clipCanvas.getContext('2d').drawImage(srcEl, cx, cy, cw, ch, 0, 0, clipCanvas.width, clipCanvas.height);
+
+        // 显示坐标（含 clamp 补偿）
+        const dx = x + (cx - sx) * scale;
+        const dy = y + (cy - sy) * scale;
+        const dw = cw * scale;
+        const dh = ch * scale;
+
+        // 绘制到主 canvas
+        const dpr = window.devicePixelRatio || 1;
+        clipsCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        clipsCtx.drawImage(clipCanvas, dx, dy, dw, dh);
+
+        clips.push({ canvas: clipCanvas, x: dx, y: dy, w: dw, h: dh });
+
+        updateUI();
+        flashPaste(dx, dy, dw, dh);
+      }
+
+      function flashPaste(x, y, w, h) {
+        const el = document.createElement('div');
+        el.className = 'flash-overlay';
+        el.style.left   = x + 'px';
+        el.style.top    = y + 'px';
+        el.style.width  = w + 'px';
+        el.style.height = h + 'px';
+        cameraArea.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+      }
+
+      function updateUI() {
+        if (clips.length > 0) {
+          clipCountEl.textContent = clips.length + ' 层';
+          clipCountEl.classList.add('visible');
+          hint.style.opacity = '0';
+        } else {
+          clipCountEl.classList.remove('visible');
+          hint.style.opacity = '1';
+        }
+      }
+
+      /* =============================================
+         Undo / Reset
+         ============================================= */
+      function undo() {
+        if (clips.length === 0) return;
+        clips.pop();
+        redrawClips(clips);
+        updateUI();
+        showToast('已撤销');
+      }
+
+      function resetAll() {
+        if (clips.length === 0) return;
+        clips = [];
+        redrawClips(clips);
+        updateUI();
+        showToast('已清空全部');
+      }
+
+      /* =============================================
+         Save Photo
+         ============================================= */
+      function savePhoto() {
+        if (!sourceReady && clips.length === 0) return;
+        const cw = cameraArea.clientWidth;
+        const ch = cameraArea.clientHeight;
+
+        const out = document.createElement('canvas');
+        out.width  = cw;
+        out.height = ch;
+        const octx = out.getContext('2d');
+
+        // 绘制当前画源帧（object-fit:cover）
+        if (sourceReady) {
+          drawSourceCover(octx, cw, ch);
+        } else {
+          octx.fillStyle = '#000';
+          octx.fillRect(0, 0, cw, ch);
+        }
+
+        // 叠上所有切片
+        for (const clip of clips) {
+          octx.drawImage(clip.canvas, clip.x, clip.y, clip.w, clip.h);
+        }
+
+        const a = document.createElement('a');
+        a.download = 'creative_photo_' + Date.now() + '.png';
+        a.href = out.toDataURL('image/png', 0.95);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        showToast('照片已保存');
+      }
+
+      function drawSourceCover(ctx, cw, ch) {
+        const el = getSourceEl();
+        const { w: sw, h: sh } = getSourceSize();
+        if (!sw || !sh) return;
+        const sa = sw / sh, ca = cw / ch;
+        let sx, sy, ssw, ssh;
+        if (sa > ca) {
+          ssh = sh; ssw = sh * ca; sx = (sw - ssw) / 2; sy = 0;
+        } else {
+          ssw = sw; ssh = sw / ca; sx = 0; sy = (sh - ssh) / 2;
+        }
+        ctx.drawImage(el, sx, sy, ssw, ssh, 0, 0, cw, ch);
+      }
+
+      /* =============================================
+         Buttons & Keyboard
+         ============================================= */
+      saveBtn.addEventListener('click', savePhoto);
+      undoBtn.addEventListener('click', undo);
+      resetBtn.addEventListener('click', resetAll);
+
+      document.addEventListener('keydown', e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); savePhoto(); }
+      });
+
+      /* =============================================
+         Boot
+         ============================================= */
+      initCamera();
+    })();
+  </script>
+</body>
+</html>
