@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scanner Distortion Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            height: 100%;
+            height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            user-select: none;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+        .bg-grid {
+            background-size: 24px 24px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+        }
+        /* Custom range slider styling */
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        /* Toggle Switch Styling */
+        .toggle-checkbox:checked {
+            right: 0;
+            background-color: #10b981;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #059669;
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col bg-grid h-screen h-[100dvh] overflow-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/90 px-4 py-2 flex-shrink-0 z-20">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30">
+                    <i class="fa-solid fa-print text-emerald-400 text-sm animate-pulse"></i>
+                </div>
+                <h1 class="text-sm font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                    SCANNER DISTORTION LAB
+                </h1>
+            </div>
+            <span class="text-[10px] code-font text-emerald-400/80 bg-emerald-950/50 border border-emerald-500/30 px-2 py-0.5 rounded-md">Designed by typowow</span>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 min-h-0 flex flex-col justify-between max-w-md w-full mx-auto p-3 gap-2.5 overflow-hidden">
+        
+        <!-- Top Unified Canvas Viewport (WYSIWYG) -->
+        <section class="flex-1 min-h-0 flex flex-col bg-slate-900/80 border border-slate-800 rounded-2xl p-2 relative backdrop-blur-md overflow-hidden">
+            <div class="flex-1 min-h-0 relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center select-none shadow-inner" id="canvasContainer">
+                
+                <!-- Main Composite Canvas -->
+                <canvas id="mainCanvas" class="w-full h-full object-contain cursor-grab active:cursor-grabbing" style="background-color: #0b0f19;"></canvas>
+
+                <!-- Gesture Tip Floating Bar at Bottom of Canvas -->
+                <div class="absolute bottom-2 inset-x-3 bg-slate-950/80 border border-slate-800/80 rounded-lg py-1.5 px-2.5 text-center pointer-events-none backdrop-blur-sm shadow-lg">
+                    <p class="text-[11px] text-slate-300 font-medium tracking-wide flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-hand-pointer text-emerald-400 text-xs"></i>
+                        <span>单指拖动、双指缩放或旋转</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Middle 5 Icon Buttons Dock -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-2 backdrop-blur-md flex-shrink-0">
+            <div class="grid grid-cols-5 gap-2">
+                
+                <!-- 1. Horizontal Scan -->
+                <button id="btnDirX" class="dir-btn py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition flex items-center justify-center text-slate-300 font-bold shadow-sm" title="横向扫描">
+                    <i class="fa-solid fa-arrow-right text-emerald-400 text-base"></i>
+                </button>
+
+                <!-- 2. Vertical Scan -->
+                <button id="btnDirY" class="dir-btn py-3 bg-emerald-500/10 border-emerald-500/50 text-emerald-300 active:scale-95 border rounded-xl transition flex items-center justify-center font-bold shadow-sm" title="纵向扫描">
+                    <i class="fa-solid fa-arrow-down text-emerald-400 text-base"></i>
+                </button>
+
+                <!-- 3. Upload Image -->
+                <div class="relative group">
+                    <input type="file" id="imageLoader" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <button class="w-full h-full py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition flex items-center justify-center text-emerald-400 font-bold shadow-sm">
+                        <i class="fa-solid fa-plus text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- 4. Color -->
+                <button id="btnColorMode" class="color-btn py-3 bg-emerald-500/10 border-emerald-500/50 text-emerald-300 active:scale-95 border rounded-xl transition flex items-center justify-center font-bold shadow-sm" title="彩色">
+                    <span class="h-4 w-4 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-emerald-400 border border-white/20 shadow-sm"></span>
+                </button>
+
+                <!-- 5. Black & White -->
+                <button id="btnBWMode" class="color-btn py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition flex items-center justify-center text-slate-300 font-bold shadow-sm" title="黑白">
+                    <i class="fa-solid fa-circle-half-stroke text-slate-300 text-base"></i>
+                </button>
+
+            </div>
+        </section>
+
+        <!-- Parameters Settings Row (Noise Grain & Show Info Toggle) -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 backdrop-blur-md flex-shrink-0">
+            <div class="grid grid-cols-2 gap-4 items-center">
+                
+                <!-- Left: Noise Grain Setting -->
+                <div class="flex flex-col">
+                    <div class="flex justify-between items-center text-xs text-slate-300 font-semibold mb-1">
+                        <span class="flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-dharmachakra text-emerald-400 text-[10px]"></i>
+                            <span>噪点设置</span>
+                        </span>
+                        <span class="code-font text-emerald-400 font-medium text-[10px]" id="valNoise">40%</span>
+                    </div>
+                    <input type="range" id="paramNoise" min="0" max="100" step="1" value="40" class="w-full accent-emerald-400">
+                </div>
+
+                <!-- Right: Show Info Switch -->
+                <div class="flex items-center justify-between pl-2 border-l border-slate-800">
+                    <span class="text-[11px] text-slate-300 font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info text-emerald-400 text-[10px]"></i>
+                        <span>显示参数</span>
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" id="paramShowInfo" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Bottom Scan Controls Row -->
+        <section class="grid grid-cols-2 gap-3 flex-shrink-0 mb-1">
+            
+            <!-- Scan Button -->
+            <button id="btnPlayPause" class="py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-2xl font-black text-sm tracking-widest transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 border border-emerald-400/30">
+                <i id="playIcon" class="fa-solid fa-play text-xs"></i>
+                <span id="playText">扫描</span>
+            </button>
+
+            <!-- Save Button -->
+            <button id="btnSave" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-700 border border-slate-700 text-slate-100 rounded-2xl font-black text-sm tracking-widest transition flex items-center justify-center gap-2 shadow-md">
+                <i class="fa-solid fa-download text-xs text-emerald-400"></i>
+                <span>保存</span>
+            </button>
+
+        </section>
+
+    </main>
+
+    <!-- Toast Warning Alert -->
+    <div id="toastMessage" class="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2.5 bg-slate-900/95 border border-red-500/50 text-red-400 rounded-xl text-xs font-semibold shadow-2xl backdrop-blur-md hidden items-center gap-2 transition-all duration-300 z-50">
+        <i class="fa-solid fa-circle-exclamation text-sm text-red-400"></i>
+        <span id="toastText">请先上传一张图片！</span>
+    </div>
+
+    <!-- JavaScript Engine -->
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const imageLoader = document.getElementById('imageLoader');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        const paramNoise = document.getElementById('paramNoise');
+        const paramShowInfo = document.getElementById('paramShowInfo');
+
+        // High resolution square canvas buffer
+        const CANVAS_SIZE = 800;
+        canvas.width = CANVAS_SIZE;
+        canvas.height = CANVAS_SIZE;
+
+        // Frozen Slit-Scan Output Buffer Layer
+        const scanBufferCanvas = document.createElement('canvas');
+        scanBufferCanvas.width = CANVAS_SIZE;
+        scanBufferCanvas.height = CANVAS_SIZE;
+        const scanBufferCtx = scanBufferCanvas.getContext('2d');
+
+        // Temporary slice buffer
+        const liveSourceCanvas = document.createElement('canvas');
+        liveSourceCanvas.width = CANVAS_SIZE;
+        liveSourceCanvas.height = CANVAS_SIZE;
+        const liveSourceCtx = liveSourceCanvas.getContext('2d');
+
+        // Noise Texture Generator Canvas
+        const noiseCanvas = document.createElement('canvas');
+        noiseCanvas.width = 128;
+        noiseCanvas.height = 128;
+        const noiseCtx = noiseCanvas.getContext('2d');
+        const noiseImgData = noiseCtx.createImageData(128, 128);
+        for (let i = 0; i < noiseImgData.data.length; i += 4) {
+            const val = Math.floor(Math.random() * 255);
+            noiseImgData.data[i] = val;
+            noiseImgData.data[i+1] = val;
+            noiseImgData.data[i+2] = val;
+            noiseImgData.data[i+3] = 255;
+        }
+        noiseCtx.putImageData(noiseImgData, 0, 0);
+
+        // Image State
+        let imgState = {
+            loaded: false,
+            imgObj: null,
+            x: CANVAS_SIZE / 2,
+            y: CANVAS_SIZE / 2,
+            scale: 1,
+            rotation: 0 // Radians
+        };
+
+        // Touch Gesture tracking
+        let touchState = {
+            isInteracting: false,
+            mode: null, // 'pan' or 'pinch'
+            startCenter: { x: 0, y: 0 },
+            startOffset: { x: 0, y: 0 },
+            startDist: 0,
+            startAngle: 0,
+            startScale: 1,
+            startRotation: 0
+        };
+
+        // Scan Parameters
+        let isScanning = false;
+        let scanLinePos = 0;
+        let scanDirection = 'Y'; // 'Y' or 'X'
+        let settings = {
+            speed: 1.5,
+            noise: 40,
+            colorMode: 'color', // 'color' or 'bw'
+            showInfo: true
+        };
+
+        let renderId = null;
+
+        // Initialize Application
+        window.onload = function() {
+            resetScanBuffer();
+            setupTouchAndMouse();
+
+            // File Upload Handler
+            imageLoader.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    handleImageFile(e.target.files[0]);
+                }
+            });
+
+            // Drag and drop onto canvas
+            const container = document.getElementById('canvasContainer');
+            container.addEventListener('dragover', (e) => e.preventDefault());
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleImageFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Paste Clipboard Image
+            window.addEventListener('paste', (e) => {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (let index in items) {
+                    const item = items[index];
+                    if (item.kind === 'file') {
+                        handleImageFile(item.getAsFile());
+                        break;
+                    }
+                }
+            });
+
+            // Middle 5 Control Buttons
+            document.getElementById('btnDirX').addEventListener('click', () => setDirection('X'));
+            document.getElementById('btnDirY').addEventListener('click', () => setDirection('Y'));
+            document.getElementById('btnColorMode').addEventListener('click', () => setColorMode('color'));
+            document.getElementById('btnBWMode').addEventListener('click', () => setColorMode('bw'));
+
+            // Parameter Controls
+            paramNoise.addEventListener('input', () => {
+                settings.noise = parseInt(paramNoise.value);
+                document.getElementById('valNoise').innerText = `${settings.noise}%`;
+                triggerRender();
+            });
+
+            paramShowInfo.addEventListener('change', () => {
+                settings.showInfo = paramShowInfo.checked;
+                triggerRender();
+            });
+
+            // Bottom Scan & Save Controls
+            btnPlayPause.addEventListener('click', toggleScan);
+            document.getElementById('btnSave').addEventListener('click', saveMasterpiece);
+
+            window.addEventListener('resize', triggerRender);
+
+            triggerRender();
+        };
+
+        function setupTouchAndMouse() {
+            // Touch Events (Single finger pan, multi-finger pinch & rotate)
+            canvas.addEventListener('touchstart', (e) => {
+                if (!imgState.loaded) return;
+                const touches = e.touches;
+                const rect = canvas.getBoundingClientRect();
+
+                if (touches.length === 1) {
+                    touchState.mode = 'pan';
+                    touchState.isInteracting = true;
+                    touchState.startCenter = getCanvasCoords(touches[0], rect);
+                    touchState.startOffset = { x: imgState.x, y: imgState.y };
+                } else if (touches.length >= 2) {
+                    touchState.mode = 'pinch';
+                    touchState.isInteracting = true;
+                    
+                    const p1 = getCanvasCoords(touches[0], rect);
+                    const p2 = getCanvasCoords(touches[1], rect);
+
+                    touchState.startDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                    touchState.startAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    touchState.startScale = imgState.scale;
+                    touchState.startRotation = imgState.rotation;
+                    touchState.startCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                    touchState.startOffset = { x: imgState.x, y: imgState.y };
+                }
+                triggerRender();
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (!touchState.isInteracting || !imgState.loaded) return;
+                e.preventDefault();
+                const touches = e.touches;
+                const rect = canvas.getBoundingClientRect();
+
+                if (touchState.mode === 'pan' && touches.length === 1) {
+                    const curr = getCanvasCoords(touches[0], rect);
+                    imgState.x = touchState.startOffset.x + (curr.x - touchState.startCenter.x);
+                    imgState.y = touchState.startOffset.y + (curr.y - touchState.startCenter.y);
+                } else if (touches.length >= 2) {
+                    const p1 = getCanvasCoords(touches[0], rect);
+                    const p2 = getCanvasCoords(touches[1], rect);
+
+                    const currDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                    const currAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    const currCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+
+                    // Zoom
+                    if (touchState.startDist > 0) {
+                        const zoomFactor = currDist / touchState.startDist;
+                        imgState.scale = Math.max(0.1, Math.min(8, touchState.startScale * zoomFactor));
+                    }
+
+                    // Rotation
+                    const angleDiff = currAngle - touchState.startAngle;
+                    imgState.rotation = touchState.startRotation + angleDiff;
+
+                    // Translation during multi-touch
+                    imgState.x = touchState.startOffset.x + (currCenter.x - touchState.startCenter.x);
+                    imgState.y = touchState.startOffset.y + (currCenter.y - touchState.startCenter.y);
+                }
+                triggerRender();
+            }, { passive: false });
+
+            const endTouch = () => {
+                if (touchState.isInteracting) {
+                    touchState.isInteracting = false;
+                    touchState.mode = null;
+                    triggerRender();
+                }
+            };
+            canvas.addEventListener('touchend', endTouch);
+            canvas.addEventListener('touchcancel', endTouch);
+
+            // Desktop Mouse Support
+            let isMouseDown = false;
+            let mouseStart = { x: 0, y: 0 };
+            let mouseOffset = { x: 0, y: 0 };
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (!imgState.loaded) return;
+                const rect = canvas.getBoundingClientRect();
+                isMouseDown = true;
+                mouseStart = getCanvasCoords(e, rect);
+                mouseOffset = { x: imgState.x, y: imgState.y };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isMouseDown || !imgState.loaded) return;
+                const rect = canvas.getBoundingClientRect();
+                const curr = getCanvasCoords(e, rect);
+                imgState.x = mouseOffset.x + (curr.x - mouseStart.x);
+                imgState.y = mouseOffset.y + (curr.y - mouseStart.y);
+                triggerRender();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isMouseDown) {
+                    isMouseDown = false;
+                    triggerRender();
+                }
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                if (!imgState.loaded) return;
+                e.preventDefault();
+                const zoomFactor = -e.deltaY * 0.0015;
+                imgState.scale = Math.max(0.1, Math.min(8, imgState.scale + zoomFactor));
+                triggerRender();
+            }, { passive: false });
+        }
+
+        function getCanvasCoords(e, rect) {
+            return {
+                x: (e.clientX - rect.left) * (CANVAS_SIZE / rect.width),
+                y: (e.clientY - rect.top) * (CANVAS_SIZE / rect.height)
+            };
+        }
+
+        function handleImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    imgState.imgObj = img;
+                    imgState.loaded = true;
+                    
+                    const scaleW = CANVAS_SIZE / img.width;
+                    const scaleH = CANVAS_SIZE / img.height;
+                    imgState.scale = Math.min(scaleW, scaleH) * 0.85;
+                    imgState.x = CANVAS_SIZE / 2;
+                    imgState.y = CANVAS_SIZE / 2;
+                    imgState.rotation = 0;
+
+                    resetScan();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function triggerRender() {
+            if (!renderId) {
+                renderId = requestAnimationFrame(renderStep);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            document.getElementById('toastText').innerText = msg;
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            setTimeout(() => {
+                toast.classList.remove('flex');
+                toast.classList.add('hidden');
+            }, 2500);
+        }
+
+        function setDirection(dir) {
+            scanDirection = dir;
+            
+            const btnX = document.getElementById('btnDirX');
+            const btnY = document.getElementById('btnDirY');
+
+            const activeClass = "dir-btn py-3 bg-emerald-500/10 border-emerald-500/50 text-emerald-300 active:scale-95 border rounded-xl transition flex items-center justify-center font-bold shadow-sm";
+            const inactiveClass = "dir-btn py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition flex items-center justify-center text-slate-300 font-bold shadow-sm";
+
+            btnX.className = dir === 'X' ? activeClass : inactiveClass;
+            btnY.className = dir === 'Y' ? activeClass : inactiveClass;
+
+            resetScan();
+        }
+
+        function setColorMode(mode) {
+            settings.colorMode = mode;
+            
+            const btnColor = document.getElementById('btnColorMode');
+            const btnBW = document.getElementById('btnBWMode');
+
+            const activeClass = "color-btn py-3 bg-emerald-500/10 border-emerald-500/50 text-emerald-300 active:scale-95 border rounded-xl transition flex items-center justify-center font-bold shadow-sm";
+            const inactiveClass = "color-btn py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition flex items-center justify-center text-slate-300 font-bold shadow-sm";
+
+            btnColor.className = mode === 'color' ? activeClass : inactiveClass;
+            btnBW.className = mode === 'bw' ? activeClass : inactiveClass;
+
+            triggerRender();
+        }
+
+        function resetScanBuffer() {
+            scanBufferCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            triggerRender();
+        }
+
+        function updatePlayBtnUI() {
+            if (isScanning) {
+                playIcon.className = "fa-solid fa-pause text-xs";
+                playText.innerText = "暂停";
+            } else {
+                playIcon.className = "fa-solid fa-play text-xs";
+                playText.innerText = "扫描";
+            }
+        }
+
+        function toggleScan() {
+            if (!imgState.loaded) {
+                showToast("请先上传一张图片！");
+                return;
+            }
+
+            isScanning = !isScanning;
+            if (isScanning && scanLinePos >= CANVAS_SIZE) {
+                resetScanBuffer();
+                scanLinePos = 0;
+            }
+            updatePlayBtnUI();
+            triggerRender();
+        }
+
+        function resetScan() {
+            scanLinePos = 0;
+            resetScanBuffer();
+            isScanning = false;
+            updatePlayBtnUI();
+            triggerRender();
+        }
+
+        function renderStep() {
+            renderId = null;
+
+            // 1. Draw live editable image onto offscreen source buffer
+            renderLiveSource();
+
+            // 2. Perform slit-scan capture step if scanning
+            processSlitScanSlice();
+
+            // 3. Render final composite onto viewport
+            renderMainComposite();
+
+            if (isScanning || touchState.isInteracting) {
+                triggerRender();
+            }
+        }
+
+        function renderLiveSource() {
+            liveSourceCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            liveSourceCtx.fillStyle = '#0b0f19';
+            liveSourceCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+            if (imgState.loaded && imgState.imgObj) {
+                liveSourceCtx.save();
+                liveSourceCtx.translate(imgState.x, imgState.y);
+                liveSourceCtx.rotate(imgState.rotation);
+                
+                const w = imgState.imgObj.width * imgState.scale;
+                const h = imgState.imgObj.height * imgState.scale;
+                
+                liveSourceCtx.imageSmoothingEnabled = true;
+                liveSourceCtx.imageSmoothingQuality = 'high';
+                liveSourceCtx.drawImage(imgState.imgObj, -w / 2, -h / 2, w, h);
+                liveSourceCtx.restore();
+            }
+        }
+
+        function processSlitScanSlice() {
+            if (!isScanning || !imgState.loaded) return;
+
+            const speed = settings.speed;
+            const startPos = scanLinePos;
+            const endPos = scanLinePos + speed;
+            const overlap = 0.5;
+
+            if (endPos > startPos && startPos < CANVAS_SIZE) {
+                scanBufferCtx.save();
+                scanBufferCtx.imageSmoothingEnabled = true;
+                scanBufferCtx.imageSmoothingQuality = 'high';
+
+                if (scanDirection === 'Y') {
+                    scanBufferCtx.drawImage(
+                        liveSourceCanvas, 
+                        0, startPos, CANVAS_SIZE, (endPos - startPos) + overlap,
+                        0, startPos, CANVAS_SIZE, (endPos - startPos) + overlap
+                    );
+                } else {
+                    scanBufferCtx.drawImage(
+                        liveSourceCanvas, 
+                        startPos, 0, (endPos - startPos) + overlap, CANVAS_SIZE,
+                        startPos, 0, (endPos - startPos) + overlap, CANVAS_SIZE
+                    );
+                }
+                scanBufferCtx.restore();
+            }
+
+            scanLinePos += speed;
+
+            if (scanLinePos >= CANVAS_SIZE) {
+                isScanning = false;
+                updatePlayBtnUI();
+                triggerRender();
+            }
+        }
+
+        function renderMainComposite() {
+            ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            ctx.save();
+
+            // Apply Grayscale Filter if B&W selected
+            if (settings.colorMode === 'bw') {
+                ctx.filter = 'grayscale(100%)';
+            } else {
+                ctx.filter = 'none';
+            }
+
+            if (!imgState.loaded) {
+                // Empty Placeholder UI
+                ctx.fillStyle = '#0b0f19';
+                ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([8, 8]);
+                ctx.strokeRect(50, 50, CANVAS_SIZE - 100, CANVAS_SIZE - 100);
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = 'bold 22px "Inter", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("点击“+”加号按钮上传图片", CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 15);
+
+                ctx.fillStyle = '#475569';
+                ctx.font = '14px "Inter", sans-serif';
+                ctx.fillText("支持单指拖动、双指缩放及旋转", CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 20);
+                ctx.restore();
+                return;
+            }
+
+            // A. Draw Live Interactive Unscanned Area
+            ctx.drawImage(liveSourceCanvas, 0, 0);
+
+            // B. Overlay Scanned Frozen Area (WYSIWYG slit-scan result directly on top)
+            if (scanLinePos > 0) {
+                ctx.save();
+                ctx.beginPath();
+                if (scanDirection === 'Y') {
+                    ctx.rect(0, 0, CANVAS_SIZE, Math.min(scanLinePos, CANVAS_SIZE));
+                } else {
+                    ctx.rect(0, 0, Math.min(scanLinePos, CANVAS_SIZE), CANVAS_SIZE);
+                }
+                ctx.clip();
+                ctx.drawImage(scanBufferCanvas, 0, 0);
+                ctx.restore();
+            }
+
+            ctx.restore(); // Restore filter state
+
+            // C. Apply Noise Grain Overlay
+            if (settings.noise > 0) {
+                ctx.save();
+                ctx.globalAlpha = (settings.noise / 100) * 0.40;
+                ctx.globalCompositeOperation = 'overlay';
+                
+                const pattern = ctx.createPattern(noiseCanvas, 'repeat');
+                ctx.fillStyle = pattern;
+                ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+                ctx.restore();
+            }
+
+            // D. Draw Laser Scanner Line
+            if (imgState.loaded) {
+                ctx.save();
+                ctx.strokeStyle = '#10b981';
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = isScanning ? 12 : 6;
+                ctx.lineWidth = isScanning ? 2.5 : 1.5;
+
+                ctx.beginPath();
+                if (scanDirection === 'Y') {
+                    ctx.moveTo(0, scanLinePos);
+                    ctx.lineTo(CANVAS_SIZE, scanLinePos);
+                } else {
+                    ctx.moveTo(scanLinePos, 0);
+                    ctx.lineTo(scanLinePos, CANVAS_SIZE);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // E. Show Parameters HUD Info
+            if (settings.showInfo && imgState.loaded) {
+                ctx.save();
+                ctx.fillStyle = '#10b981';
+                ctx.font = '500 13px "Fira Code", monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+
+                const hudText = `DIR: ${scanDirection === 'Y' ? 'VERTICAL' : 'HORIZONTAL'} | COLOR: ${settings.colorMode.toUpperCase()} | NOISE: ${settings.noise}%`;
+                
+                ctx.fillStyle = 'rgba(11, 15, 25, 0.7)';
+                ctx.fillRect(15, 15, ctx.measureText(hudText).width + 16, 24);
+                
+                ctx.fillStyle = '#10b981';
+                ctx.fillText(hudText, 23, 20);
+                ctx.restore();
+            }
+        }
+
+        function saveMasterpiece() {
+            if (!imgState.loaded) {
+                showToast("请先上传一张图片！");
+                return;
+            }
+            
+            const link = document.createElement('a');
+            link.download = `scanner_distortion_${Date.now()}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+    </script>
+</body>
+</html>
